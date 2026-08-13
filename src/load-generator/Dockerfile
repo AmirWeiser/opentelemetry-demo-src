@@ -10,10 +10,11 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./src/load-generator/requirements.txt .
-RUN pip install --prefix="/reqs" setuptools -r requirements.txt
+RUN pip install --prefix="/reqs" -r requirements.txt
 
 FROM base
 WORKDIR /usr/src/app/
+RUN pip install "setuptools<81"
 COPY --from=builder /reqs /usr/local
 COPY ./src/load-generator/locustfile.py .
 COPY ./src/load-generator/people.json .
