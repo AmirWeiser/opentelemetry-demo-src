@@ -1,0 +1,45 @@
+# Node / JS (frontend, frontend-proxy config, load-generator UI, etc.)
+node_modules/
+dist/
+.next/
+npm-debug.log*
+
+# Python (recommendation, load-generator)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# .NET (cart)
+bin/
+obj/
+
+# Go (product-catalog, checkout, shipping, etc.)
+vendor/
+
+# Java/Kotlin (fraud-detection, ad, kafka)
+target/
+*.class
+.gradle/
+
+# Rust (shipping, accounting)
+**/target/
+Cargo.lock
+
+# PHP (quote)
+composer.lock
+vendor/
+
+# Ruby / Cypress / misc test artifacts
+cypress/videos/
+cypress/screenshots/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
