@@ -6,7 +6,7 @@
   "currency": { "dockerfile": "src/currency/Dockerfile", "context": "." },
   "email": { "dockerfile": "src/email/Dockerfile", "context": "." },
   "flagd-ui": { "dockerfile": "src/flagd-ui/Dockerfile", "context": ".", "valuesKey": "flagdUi" },
-  "fraud-detection": { "dockerfile": "src/fraud-detection/Dockerfile", "context": ".", "valuesKey": "fraudDetection" },
+  "fraud-detection": { "dockerfile": "src/fraud-detection/Dockerfile", "context": ".", "valuesKey": "fraudDetection", "buildArgs": "OTEL_JAVA_AGENT_VERSION=2.30.0" },
   "frontend": { "dockerfile": "src/frontend/Dockerfile", "context": "." },
   "frontend-proxy": { "dockerfile": "src/frontend-proxy/Dockerfile", "context": ".", "valuesKey": "frontendProxy" },
   "image-provider": { "dockerfile": "src/image-provider/Dockerfile", "context": ".", "valuesKey": "imageProvider" },
