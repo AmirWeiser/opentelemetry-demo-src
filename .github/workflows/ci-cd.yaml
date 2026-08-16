@@ -127,7 +127,10 @@ jobs:
 
   update-gitops:
     needs: [detect-changes, build]
-    if: needs.detect-changes.outputs.services != '[]'
+    # An explicit `if:` replaces the implicit "all needs succeeded" check
+    # GitHub Actions would otherwise apply - success() has to be spelled out
+    # or this runs (and bumps tags) even when some matrix builds failed.
+    if: success() && needs.detect-changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
