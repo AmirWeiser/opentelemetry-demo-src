@@ -139,7 +139,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ${{ env.GITOPS_REPO }}
-          token: ${{ secrets.GITOPS_PAT }}
+          token: ${{ secrets.LOCAL_GHCR }}
           path: gitops
 
       - name: Install yq
