@@ -82,8 +82,8 @@ jobs:
           {
             echo "dockerfile=$(echo "$CFG" | jq -r '.dockerfile')"
             echo "context=$(echo "$CFG" | jq -r '.context')"
-            echo "buildArgs=$(echo "$CFG" | jq -r '.buildArgs // \"\"')"
-            echo "testCmd=$(echo "$CFG" | jq -r '.test // \"\"')"
+            echo "buildArgs=$(echo "$CFG" | jq -r '.buildArgs // empty')"
+            echo "testCmd=$(echo "$CFG" | jq -r '.test // empty')"
             echo "testDir=$(echo "$CFG" | jq -r --arg s "${{ matrix.service }}" '.testDir // ("src/" + $s)')"
           } >> "$GITHUB_OUTPUT"
 
@@ -93,6 +93,16 @@ jobs:
         if: steps.cfg.outputs.testCmd != ''
         working-directory: ${{ steps.cfg.outputs.testDir }}
         run: ${{ steps.cfg.outputs.testCmd }}
+
+      - name: Check GHCR credential is present
+        env:
+          TOKEN_CHECK: ${{ secrets.LOCAL_GHCR }}
+        run: |
+          if [ -z "$TOKEN_CHECK" ]; then
+            echo "::error::secrets.LOCAL_GHCR is empty or not visible to this workflow"
+            exit 1
+          fi
+          echo "secrets.LOCAL_GHCR is set (length ${#TOKEN_CHECK})"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
