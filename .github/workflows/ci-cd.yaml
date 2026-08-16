@@ -1,0 +1,160 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: "Build and push every service regardless of changed paths"
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: amirweiser
+  GITOPS_REPO: AmirWeiser/opentelemetry-demo-gitops
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.compute.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            accounting: src/accounting/**
+            ad: src/ad/**
+            cart: src/cart/**
+            checkout: src/checkout/**
+            currency: src/currency/**
+            email: src/email/**
+            flagd-ui: src/flagd-ui/**
+            fraud-detection: src/fraud-detection/**
+            frontend: src/frontend/**
+            frontend-proxy: src/frontend-proxy/**
+            image-provider: src/image-provider/**
+            kafka: src/kafka/**
+            load-generator: src/load-generator/**
+            payment: src/payment/**
+            product-catalog: src/product-catalog/**
+            quote: src/quote/**
+            recommendation: src/recommendation/**
+            shipping: src/shipping/**
+            shared: pb/**
+
+      # pb/ is shared across most services' build context - if it changed, or a
+      # manual "build_all" run was requested, rebuild everything rather than
+      # trying to track which services actually vendor it.
+      - name: Compute final service matrix
+        id: compute
+        run: |
+          if [ "${{ inputs.build_all }}" = "true" ] || echo '${{ steps.filter.outputs.changes }}' | jq -e 'index("shared")' > /dev/null; then
+            SERVICES=$(jq -c 'keys' .github/services.json)
+          else
+            SERVICES=$(echo '${{ steps.filter.outputs.changes }}' | jq -c '. - ["shared"]')
+          fi
+          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Building: $SERVICES"
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read service build config
+        id: cfg
+        run: |
+          CFG=$(jq -c --arg s "${{ matrix.service }}" '.[$s]' .github/services.json)
+          {
+            echo "dockerfile=$(echo "$CFG" | jq -r '.dockerfile')"
+            echo "context=$(echo "$CFG" | jq -r '.context')"
+            echo "buildArgs=$(echo "$CFG" | jq -r '.buildArgs // \"\"')"
+            echo "testCmd=$(echo "$CFG" | jq -r '.test // \"\"')"
+            echo "testDir=$(echo "$CFG" | jq -r --arg s "${{ matrix.service }}" '.testDir // ("src/" + $s)')"
+          } >> "$GITHUB_OUTPUT"
+
+      # Best-effort: only runs if a service defines a "test" command in
+      # services.json. No test command defined = skipped, not faked.
+      - name: Run tests
+        if: steps.cfg.outputs.testCmd != ''
+        working-directory: ${{ steps.cfg.outputs.testDir }}
+        run: ${{ steps.cfg.outputs.testCmd }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.cfg.outputs.context }}
+          file: ${{ steps.cfg.outputs.dockerfile }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.service }}:${{ github.sha }}
+          build-args: ${{ steps.cfg.outputs.buildArgs }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  update-gitops:
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/services.json
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Install yq
+        run: |
+          sudo curl -sL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Bump image tags in values.yaml
+        run: |
+          SERVICES='${{ needs.detect-changes.outputs.services }}'
+          echo "$SERVICES" | jq -r '.[]' | while read -r svc; do
+            key=$(jq -r --arg s "$svc" '.[$s].valuesKey // $s' .github/services.json)
+            yq -i ".${key}.image.tag = \"${{ github.sha }}\"" gitops/helm/opentelemetry-demo/values.yaml
+            echo "bumped $svc ($key) -> ${{ github.sha }}"
+          done
+
+      - name: Commit and push
+        working-directory: gitops
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/opentelemetry-demo/values.yaml
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -m "chore: bump image tag(s) to ${GITHUB_SHA}"
+            git push
+          fi

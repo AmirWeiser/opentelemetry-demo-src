@@ -1,0 +1,20 @@
+{
+  "accounting": { "dockerfile": "src/accounting/Dockerfile", "context": "." },
+  "ad": { "dockerfile": "src/ad/Dockerfile", "context": "src/ad" },
+  "cart": { "dockerfile": "src/cart/src/Dockerfile", "context": "." },
+  "checkout": { "dockerfile": "src/checkout/Dockerfile", "context": "." },
+  "currency": { "dockerfile": "src/currency/Dockerfile", "context": "." },
+  "email": { "dockerfile": "src/email/Dockerfile", "context": "." },
+  "flagd-ui": { "dockerfile": "src/flagd-ui/Dockerfile", "context": ".", "valuesKey": "flagdUi" },
+  "fraud-detection": { "dockerfile": "src/fraud-detection/Dockerfile", "context": ".", "valuesKey": "fraudDetection" },
+  "frontend": { "dockerfile": "src/frontend/Dockerfile", "context": "." },
+  "frontend-proxy": { "dockerfile": "src/frontend-proxy/Dockerfile", "context": ".", "valuesKey": "frontendProxy" },
+  "image-provider": { "dockerfile": "src/image-provider/Dockerfile", "context": ".", "valuesKey": "imageProvider" },
+  "kafka": { "dockerfile": "src/kafka/Dockerfile", "context": "src/kafka", "buildArgs": "OTEL_JAVA_AGENT_VERSION=2.30.0" },
+  "load-generator": { "dockerfile": "src/load-generator/Dockerfile", "context": ".", "valuesKey": "loadGenerator" },
+  "payment": { "dockerfile": "src/payment/Dockerfile", "context": "." },
+  "product-catalog": { "dockerfile": "src/product-catalog/Dockerfile", "context": "src/product-catalog", "valuesKey": "productCatalog" },
+  "quote": { "dockerfile": "src/quote/Dockerfile", "context": "." },
+  "recommendation": { "dockerfile": "src/recommendation/Dockerfile", "context": "src/recommendation" },
+  "shipping": { "dockerfile": "src/shipping/Dockerfile", "context": "." }
+}
