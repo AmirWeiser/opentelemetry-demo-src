@@ -155,8 +155,14 @@ jobs:
           SERVICES='${{ needs.detect-changes.outputs.services }}'
           echo "$SERVICES" | jq -r '.[]' | while read -r svc; do
             key=$(jq -r --arg s "$svc" '.[$s].valuesKey // $s' .github/services.json)
-            yq -i ".${key}.image.tag = \"${{ github.sha }}\"" gitops/helm/opentelemetry-demo/values.yaml
-            echo "bumped $svc ($key) -> ${{ github.sha }}"
+            # Always set repository alongside tag, not just tag. Services that
+            # still point at the public ghcr.io/open-telemetry/demo fallback
+            # image only have that overwritten here on their first build -
+            # setting tag alone left repository stale, producing a
+            # repo:tag combination (public repo + our sha) that never
+            # existed and pulled as ImagePullBackOff.
+            yq -i ".${key}.image.repository = \"${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${svc}\" | .${key}.image.tag = \"${{ github.sha }}\"" gitops/helm/opentelemetry-demo/values.yaml
+            echo "bumped $svc ($key) -> ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${svc}:${{ github.sha }}"
           done
 
       - name: Commit and push
