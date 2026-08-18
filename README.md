@@ -63,6 +63,8 @@ update-gitops    --- only runs if every matrix build succeeded
 
 **Manual `build_all` dispatch** exists for cases the path-filter can't reason about well — e.g. bootstrapping every service's first image, or a base-image bump that doesn't show up as a `src/**` diff.
 
+**A real bug this design caught early:** the tag-bump step originally only wrote `image.tag`, leaving `image.repository` untouched. Harmless for services already built by this pipeline, but any service still pointing at the public upstream fallback image got its tag silently overwritten with our commit sha while the repository stayed on the public registry - producing a `repo:tag` pair that never existed and an `ImagePullBackOff` in the cluster. Fixed by having the bump step set both fields together, in the one shared loop every service goes through - so it can't recur for any service individually, only be reintroduced pipeline-wide.
+
 ## Repo layout
 
 ```
