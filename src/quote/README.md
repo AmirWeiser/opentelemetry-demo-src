@@ -45,3 +45,5 @@ curl --location 'http://localhost:8999/getquote' \
 --data '{"numberOfItems":3}'
 ```
 
+
+<!-- CI verification: EKS end-to-end sync check -->
