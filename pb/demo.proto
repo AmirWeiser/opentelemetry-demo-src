@@ -316,3 +316,5 @@ message DeleteFlagResponse {}
 
 
 
+
+// CI verification: full-fleet build + Trivy scan + ArgoCD sync check
