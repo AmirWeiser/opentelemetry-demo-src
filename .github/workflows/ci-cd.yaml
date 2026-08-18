@@ -68,6 +68,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -124,6 +125,29 @@ jobs:
           build-args: ${{ steps.cfg.outputs.buildArgs }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # Report-only for now (exit-code 0): 18 services across 8+ languages
+      # and base images almost certainly carry some pre-existing CRITICAL/
+      # HIGH findings that aren't fair to gate a merge on discovering for
+      # the first time. Results land in the repo's Security tab either way,
+      # so nothing is silently ignored. Once findings are triaged, flip
+      # exit-code to '1' to make this a real gate.
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.service }}:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload scan results to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.service }}
 
   update-gitops:
     needs: [detect-changes, build]
